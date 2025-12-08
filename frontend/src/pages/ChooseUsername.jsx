@@ -55,7 +55,8 @@ export default function ChooseUsername() {
       });
 
       console.log("Username kaydedildi!");
-      navigate("/home"); // Sonraki sayfa
+      navigate("/location-permission");
+
     } catch (err) {
       console.error(err);
       setError("Bir hata oluştu.");
