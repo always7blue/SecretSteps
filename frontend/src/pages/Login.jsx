@@ -4,27 +4,22 @@ import InputField from "../components/InputField";
 import PrimaryButton from "../components/PrimaryButton";
 import GoogleButton from "../components/GoogleButton";
 import { auth } from "../lib/firebase";
-import { 
-  signInWithEmailAndPassword, 
-  signInWithPopup, 
-  GoogleAuthProvider 
+import {
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider
 } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
-  const navigate = useNavigate();  // ⭐ BURADA OLMALI
+  const navigate = useNavigate();
 
   const loginUser = async () => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      console.log("Giriş başarılı!");
-
-      // ⭐ GİRİŞ BAŞARILI → KONUM İZNİ SAYFASINA
       navigate("/location-permission");
-
     } catch (err) {
       console.error(err);
     }
@@ -33,11 +28,7 @@ export default function Login() {
   const googleLogin = async () => {
     try {
       await signInWithPopup(auth, new GoogleAuthProvider());
-      console.log("Google ile giriş başarılı!");
-
-      // ⭐ GOOGLE GİRİŞTE DE AYNI
       navigate("/location-permission");
-
     } catch (err) {
       console.error(err);
     }
@@ -62,8 +53,15 @@ export default function Login() {
         />
 
         <PrimaryButton text="Giriş Yap" onClick={loginUser} />
-
         <GoogleButton onClick={googleLogin} />
+
+        {/* ⭐ BURASI EKLENDİ ⭐ */}
+        <button
+          onClick={() => navigate("/register")}
+          className="w-full mt-3 py-2 text-sm text-[#A390E4] hover:text-white transition"
+        >
+          Hesabın yok mu? <span className="underline">Kayıt Ol</span>
+        </button>
 
       </AuthCard>
     </div>

@@ -2,37 +2,36 @@ import { Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { auth, db } from "../lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
 
 export default function ProtectedRoute({ children }) {
   const [loading, setLoading] = useState(true);
   const [allowed, setAllowed] = useState(false);
 
   useEffect(() => {
-    const check = async () => {
-      const user = auth.currentUser;
-
-      // Login yok → giriş sayfasına
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
+        // Kullanıcı yok → girişe
         setAllowed(false);
         setLoading(false);
         return;
       }
 
-      // Username seçilmiş mi?
+      // Kullanıcı var → Firestore'dan username çek
       const snap = await getDoc(doc(db, "users", user.uid));
 
       if (!snap.exists() || !snap.data().username) {
-        // Username YOK → kullanıcı adı seçmeye yönlendir
+        // Username yok → username seçme sayfasına
         setAllowed(false);
       } else {
-        // Username VAR → giriş serbest
+        // Username VAR → home'a izin
         setAllowed(true);
       }
 
       setLoading(false);
-    };
+    });
 
-    check();
+    return () => unsubscribe();
   }, []);
 
   if (loading) {
