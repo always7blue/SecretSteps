@@ -5,6 +5,9 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import HomePage from "./pages/HomePage";
 import LocationPermission from "./pages/LocationPermission";
 import EditProfile from "./pages/EditProfile";
+import "leaflet.markercluster/dist/MarkerCluster.css";
+import "leaflet.markercluster/dist/MarkerCluster.Default.css";
+
 
 export default function App() {
   return (

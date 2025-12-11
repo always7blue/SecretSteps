@@ -8,10 +8,11 @@ import {
   collection,
   getDocs,
   deleteDoc,
-  updateDoc
+  updateDoc,
 } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import L from "leaflet";
+import "leaflet.markercluster";
 
 // --- PIN ICONS ---
 const publicPin = L.icon({
@@ -26,39 +27,56 @@ const privatePin = L.icon({
   iconAnchor: [12, 30],
 });
 
+// --- MESAFE HESAPLAMA ---
+function getDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371e3;
+  const φ1 = (lat1 * Math.PI) / 180;
+  const φ2 = (lat2 * Math.PI) / 180;
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+  const a =
+    Math.sin(Δφ / 2) ** 2 +
+    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; // metres
+}
+
 export default function HomePage() {
   const [position, setPosition] = useState(null);
   const [map, setMap] = useState(null);
 
+  const [userData, setUserData] = useState(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+
+  // NOT STATES
   const selectModeRef = useRef(false);
   const [selectedPos, setSelectedPos] = useState(null);
-
   const [showCard, setShowCard] = useState(false);
   const [noteText, setNoteText] = useState("");
   const [noteType, setNoteType] = useState("public");
   const [usernameInput, setUsernameInput] = useState("");
   const [allowedUsernames, setAllowedUsernames] = useState([]);
-
   const [editingNote, setEditingNote] = useState(null);
+  
 
-  const [userData, setUserData] = useState(null);
-  const [profileOpen, setProfileOpen] = useState(false);
-
+  const clusterRef = useRef(null);
   const navigate = useNavigate();
   const user = auth.currentUser;
 
   // --- USER DATA ---
   useEffect(() => {
-    async function fetchData() {
+    async function fetchUser() {
       if (!user) return;
       const ref = doc(db, "users", user.uid);
       const snap = await getDoc(ref);
       if (snap.exists()) setUserData(snap.data());
     }
-    fetchData();
+    fetchUser();
   }, []);
 
-  // --- GET LOCATION ---
+  // --- LOCATION ---
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(
       (pos) => setPosition([pos.coords.latitude, pos.coords.longitude]),
@@ -76,14 +94,15 @@ export default function HomePage() {
       maxZoom: 19,
     }).addTo(m);
 
-    L.marker(position).addTo(m).bindPopup("Buradasın!");
+    const cluster = L.markerClusterGroup();
+    m.addLayer(cluster);
+    clusterRef.current = cluster;
 
+    // Konum seçme
     m.on("click", (e) => {
       if (!selectModeRef.current) return;
 
-      const { lat, lng } = e.latlng;
-
-      setSelectedPos([lat, lng]);
+      setSelectedPos([e.latlng.lat, e.latlng.lng]);
       setShowCard(true);
       selectModeRef.current = false;
     });
@@ -91,16 +110,10 @@ export default function HomePage() {
     setMap(m);
   }, [position]);
 
-  // --- CLEAN MARKERS ---
+  // --- MARKER RELOAD ---
   const reloadMarkers = async () => {
-    if (!map || !userData) return;
-
-    map.eachLayer((layer) => {
-      if (layer instanceof L.Marker && !layer._popup?._content?.includes("Buradasın")) {
-        layer.remove();
-      }
-    });
-
+    if (!clusterRef.current || !map || !userData) return;
+    clusterRef.current.clearLayers();
     loadNotes();
   };
 
@@ -108,55 +121,94 @@ export default function HomePage() {
   const loadNotes = async () => {
     const snap = await getDocs(collection(db, "notes"));
 
-    snap.forEach((docSnap) => {
-      const note = { id: docSnap.id, ...docSnap.data() };
+    snap.forEach((d) => {
+      const note = { id: d.id, ...d.data() };
       if (!note.location) return;
 
-      const { lat, lng } = note.location;
-
       const isMe = note.authorUid === user.uid;
-      const isAllowed =
+      const canSee =
         note.type === "public" ||
-        (note.type === "private" &&
-          note.allowedUsernames?.includes(userData.username)) ||
-        isMe;
+        isMe ||
+        note.allowedUsernames?.includes(userData.username);
 
-      if (!isAllowed) return;
+      if (!canSee) return;
 
-      const marker = L.marker([lat, lng], {
-        icon: note.type === "public" ? publicPin : privatePin,
-      }).addTo(map);
+      const marker = L.marker(
+        [note.location.lat, note.location.lng],
+        { icon: note.type === "public" ? publicPin : privatePin }
+      );
 
+      // POPUP HTML
       let popupHTML = `
-        <b>${note.text}</b><br/>
-        <small>${note.authorUsername}</small><br/>
+        <div>
+          <b>${note.text}</b><br/>
+          <small>${note.authorUsername}</small><br/>
       `;
+
+      // ÜZERI CLICKTE MESAFE KONTROLÜ YAPACAĞIZ
+      popupHTML += `<div class="note-id" data-note="${note.id}"></div>`;
 
       if (isMe) {
         popupHTML += `
-          <button id="edit-${note.id}" style="margin-top:5px; padding:4px 8px; background:#6d28d9; color:white; border:none; border-radius:6px">Düzenle</button>
-          <button id="del-${note.id}" style="margin-top:5px; margin-left:6px; padding:4px 8px; background:#dc2626; color:white; border:none; border-radius:6px">Sil</button>
+          <button class="edit-btn" data-id="${note.id}" style="padding:4px 8px;margin-top:6px;background:#6d28d9;color:white;border-radius:6px;">
+            Düzenle
+          </button>
+          <button class="del-btn" data-id="${note.id}" style="padding:4px 8px;margin-left:6px;background:#dc2626;color:white;border-radius:6px;">
+            Sil
+          </button>
         `;
       }
 
+      popupHTML += `</div>`;
       marker.bindPopup(popupHTML);
 
+      // POPUP AÇILINCA TETIK
       marker.on("popupopen", () => {
-        if (isMe) {
-          document.getElementById(`edit-${note.id}`).onclick = () => {
-            setEditingNote(note);
-            setNoteText(note.text);
-            setNoteType(note.type);
-            setAllowedUsernames(note.allowedUsernames || []);
-            setShowCard(true);
-          };
+        const popupNode = document.querySelector(".leaflet-popup-content");
 
-          document.getElementById(`del-${note.id}`).onclick = async () => {
-            await deleteDoc(doc(db, "notes", note.id));
-            reloadMarkers();
-          };
+        // --- MESAFE KONTROLÜ ---
+        if (note.type === "private" && !isMe) {
+          const dist = getDistance(
+            position[0],
+            position[1],
+            note.location.lat,
+            note.location.lng
+          );
+
+          if (!note.allowedUsernames.includes(userData.username)) {
+            popupNode.innerHTML = `
+              <div style="padding:6px;">
+                🔒 Bu not size özel değil.
+              </div>`;
+            return;
+          }
+
+          if (dist > 10) {
+            popupNode.innerHTML = `
+              <div style="padding:6px;">
+                🔒 Bu özel notu görmek için nota yaklaşmalısın.
+              </div>`;
+            return;
+          }
         }
+
+        // --- EDIT BUTTON ---
+        popupNode.querySelector(".edit-btn")?.addEventListener("click", () => {
+          setEditingNote(note);
+          setNoteText(note.text);
+          setNoteType(note.type);
+          setAllowedUsernames(note.allowedUsernames || []);
+          setShowCard(true);
+        });
+
+        // --- DELETE BUTTON ---
+        popupNode.querySelector(".del-btn")?.addEventListener("click", async () => {
+          await deleteDoc(doc(db, "notes", note.id));
+          reloadMarkers();
+        });
       });
+
+      clusterRef.current.addLayer(marker);
     });
   };
 
@@ -166,9 +218,9 @@ export default function HomePage() {
 
   // --- SAVE NOTE ---
   const saveNote = async () => {
-    if (!selectedPos) return alert("Konum seçilmedi!");
+    if (!selectedPos) return alert("Konum seç!");
 
-    const note = {
+    const newNote = {
       text: noteText,
       type: noteType,
       allowedUsernames: noteType === "private" ? allowedUsernames : [],
@@ -181,9 +233,7 @@ export default function HomePage() {
       createdAt: new Date(),
     };
 
-    await addDoc(collection(db, "notes"), note);
-
-    setShowCard(false);
+    await addDoc(collection(db, "notes"), newNote);
     resetCard();
     reloadMarkers();
   };
@@ -198,67 +248,60 @@ export default function HomePage() {
       updatedAt: new Date(),
     });
 
-    setEditingNote(null);
-    setShowCard(false);
     resetCard();
     reloadMarkers();
   };
 
+  // RESET
   const resetCard = () => {
+    setShowCard(false);
     setSelectedPos(null);
+    setEditingNote(null);
     setNoteText("");
     setAllowedUsernames([]);
     setNoteType("public");
   };
 
+  // ADD USER
   const addAllowedUser = () => {
     if (!usernameInput.trim()) return;
     setAllowedUsernames([...allowedUsernames, usernameInput.trim()]);
     setUsernameInput("");
   };
 
+  // LOGOUT
   const logout = async () => {
     await signOut(auth);
     navigate("/");
   };
 
+  // --- UI ---
   return (
     <div className="relative w-full h-screen">
+
       {/* PROFILE BUTTON */}
       <button
         onClick={() => setProfileOpen(!profileOpen)}
         className="absolute top-4 right-4 z-[9999]
-        bg-white/20 w-12 h-12 rounded-full flex items-center justify-center
-        text-white text-xl backdrop-blur-xl border border-white/30"
+        bg-white/20 w-12 h-12 rounded-full flex items-center justify-center text-white text-xl backdrop-blur-xl"
       >
         ☰
       </button>
 
       {/* PROFILE PANEL */}
       {profileOpen && (
-        <div
-          className="absolute top-20 right-4 z-[9999]
-          w-72 p-6 rounded-2xl bg-[rgba(15,15,35,0.9)] backdrop-blur-xl text-white"
-        >
+        <div className="absolute top-20 right-4 z-[9999] w-72 p-6 rounded-2xl bg-[rgba(15,15,35,0.9)] text-white">
           <div className="flex flex-col items-center">
-            <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center">
-              👤
-            </div>
+            <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center">👤</div>
             <h2 className="text-xl mt-3">{userData?.username}</h2>
             <p className="text-sm text-gray-300">{user?.email}</p>
           </div>
 
           <div className="mt-6 flex flex-col gap-3">
-            <button
-              onClick={() => navigate("/edit-profile")}
-              className="py-2 rounded-xl bg-white/10 hover:bg-white/20"
-            >
+            <button onClick={() => navigate("/edit-profile")} className="py-2 rounded-xl bg-white/10">
               Profili Düzenle
             </button>
-            <button
-              onClick={logout}
-              className="py-2 rounded-xl bg-red-500/80 hover:bg-red-500"
-            >
+            <button onClick={logout} className="py-2 rounded-xl bg-red-500">
               Çıkış Yap
             </button>
           </div>
@@ -269,43 +312,39 @@ export default function HomePage() {
       <button
         onClick={() => {
           selectModeRef.current = true;
-          alert("Haritadan bir yere dokunarak konum seç!");
+          alert("Haritadan konum seç!");
         }}
-        className="absolute bottom-6 right-6 z-[9999] w-16 h-16 rounded-full
-        bg-purple-500 hover:bg-purple-600 text-white text-4xl flex items-center
-        justify-center shadow-xl"
+        className="absolute bottom-6 right-6 z-[9999] w-16 h-16 rounded-full bg-purple-500 text-white text-4xl flex items-center justify-center shadow-xl"
       >
         +
       </button>
 
       {/* NOTE CARD */}
       {showCard && (
-        <div
-          className="absolute bottom-4 left-1/2 -translate-x-1/2 
-        w-[90%] max-w-md p-5 rounded-2xl z-[9999]
-        bg-[rgba(10,10,25,0.95)] border border-white/10 shadow-xl"
-        >
-          <h2 className="text-xl text-white mb-3">
-            {editingNote ? "Notu Düzenle" : "Yeni Not Ekle"}
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2
+        w-[90%] max-w-md p-5 rounded-xl bg-[rgba(10,10,25,0.95)]
+        z-[9999] text-white border border-white/10">
+
+          <h2 className="text-xl mb-3">
+            {editingNote ? "Notu Düzenle" : "Yeni Not"}
           </h2>
 
           <textarea
             value={noteText}
             onChange={(e) => setNoteText(e.target.value)}
             placeholder="Notun..."
-            className="w-full p-3 rounded-lg bg-white/10 text-white border border-white/20"
-          ></textarea>
+            className="w-full p-3 rounded bg-white/10 mb-3"
+          />
 
-          {/* TYPE SELECTION (Only new notes) */}
+          {/* TYPE SEÇİMİ */}
           {!editingNote && (
-            <div className="flex items-center gap-4 mt-3 text-white">
+            <div className="flex gap-4 mb-3">
               <label>
                 <input
                   type="radio"
                   checked={noteType === "public"}
                   onChange={() => setNoteType("public")}
-                />{" "}
-                Public
+                /> Public
               </label>
 
               <label>
@@ -313,36 +352,29 @@ export default function HomePage() {
                   type="radio"
                   checked={noteType === "private"}
                   onChange={() => setNoteType("private")}
-                />{" "}
-                Private
+                /> Private
               </label>
             </div>
           )}
 
-          {/* PRIVATE SETTINGS */}
+          {/* PRIVATE USER INPUT */}
           {noteType === "private" && !editingNote && (
-            <div className="mt-3">
+            <div className="mb-3">
               <div className="flex gap-2">
                 <input
                   value={usernameInput}
                   onChange={(e) => setUsernameInput(e.target.value)}
-                  placeholder="Kullanıcı adı ekle"
-                  className="flex-1 p-2 bg-white/10 text-white rounded border border-white/20"
+                  placeholder="Kullanıcı adı"
+                  className="flex-1 p-2 bg-white/10 rounded"
                 />
-                <button
-                  onClick={addAllowedUser}
-                  className="px-4 bg-purple-500 rounded text-white"
-                >
+                <button onClick={addAllowedUser} className="px-4 bg-purple-500 rounded">
                   Ekle
                 </button>
               </div>
 
               <div className="flex flex-wrap gap-2 mt-2">
                 {allowedUsernames.map((u, i) => (
-                  <span
-                    key={i}
-                    className="px-3 py-1 bg-purple-600 rounded-full text-sm"
-                  >
+                  <span key={i} className="px-3 py-1 bg-purple-600 rounded-full text-sm">
                     {u}
                   </span>
                 ))}
@@ -350,22 +382,17 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* BUTTONS */}
-          <div className="flex gap-3 mt-4">
+          <div className="flex gap-2">
             <button
               onClick={editingNote ? updateNote : saveNote}
-              className="flex-1 py-3 rounded-xl bg-purple-500 text-white"
+              className="flex-1 py-2 bg-purple-500 rounded"
             >
               {editingNote ? "Güncelle" : "Kaydet"}
             </button>
 
             <button
-              onClick={() => {
-                setShowCard(false);
-                setEditingNote(null);
-                resetCard();
-              }}
-              className="py-3 px-4 rounded-xl bg-white/10 text-white"
+              onClick={resetCard}
+              className="py-2 px-4 bg-white/20 rounded"
             >
               İptal
             </button>
@@ -374,22 +401,21 @@ export default function HomePage() {
               <button
                 onClick={async () => {
                   await deleteDoc(doc(db, "notes", editingNote.id));
-                  setEditingNote(null);
-                  setShowCard(false);
                   resetCard();
                   reloadMarkers();
                 }}
-                className="py-3 px-4 rounded-xl bg-red-500 text-white"
+                className="py-2 px-4 bg-red-500 rounded"
               >
                 Sil
               </button>
             )}
           </div>
+
         </div>
       )}
 
       {/* MAP */}
-      <div id="map" className="absolute inset-0 z-0"></div>
+      <div id="map" className="absolute inset-0"></div>
     </div>
   );
 }
