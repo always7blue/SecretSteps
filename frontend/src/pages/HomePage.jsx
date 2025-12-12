@@ -142,19 +142,21 @@ export default function HomePage() {
       // ÜZERI CLICKTE MESAFE KONTROLÜ YAPACAĞIZ
       popupHTML += `<div class="note-id" data-note="${note.id}"></div>`;
 
-      if (isMe) {
-        popupHTML += `
-          <button class="edit-btn" data-id="${note.id}" style="padding:4px 8px;margin-top:6px;background:#6d28d9;color:white;border-radius:6px;">
-            Düzenle
-          </button>
-          <button class="del-btn" data-id="${note.id}" style="padding:4px 8px;margin-left:6px;background:#dc2626;color:white;border-radius:6px;">
-            Sil
-          </button>
-        `;
-      }
 
       popupHTML += `</div>`;
       marker.bindPopup(popupHTML);
+
+      marker.on("click", () => {
+      const isMe = note.authorUid === user.uid;
+      if (!isMe) return;
+
+      setEditingNote(note);
+      setNoteText(note.text);
+      setNoteType(note.type);
+      setAllowedUsernames(note.allowedUsernames || []);
+      setShowCard(true);
+    });
+
 
       // POPUP AÇILINCA TETIK
       marker.on("popupopen", () => {
@@ -167,6 +169,17 @@ export default function HomePage() {
           note.location.lat,
           note.location.lng
         );
+
+        // 🟢 1️⃣ AUTHOR HER ZAMAN GÖRÜR
+        if (isMe) {
+          popupNode.insertAdjacentHTML(
+            "afterbegin",
+            `<div class="text-xs text-green-400 mb-1 text-center">
+              ✨
+            </div>`
+          );
+          return;
+        }
 
         if (dist > 10) {
           popupNode.innerHTML = `
@@ -199,23 +212,7 @@ export default function HomePage() {
             📍 Konuma ulaştın
           </div>`
         );
-
-        // 4️⃣ EDIT
-        popupNode.querySelector(".edit-btn")?.addEventListener("click", () => {
-          setEditingNote(note);
-          setNoteText(note.text);
-          setNoteType(note.type);
-          setAllowedUsernames(note.allowedUsernames || []);
-          setShowCard(true);
-        });
-
-        // 5️⃣ DELETE
-        popupNode.querySelector(".del-btn")?.addEventListener("click", async () => {
-          await deleteDoc(doc(db, "notes", note.id));
-          reloadMarkers();
-        });
       });
-
 
       clusterRef.current.addLayer(marker);
     });
