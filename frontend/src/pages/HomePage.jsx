@@ -14,18 +14,6 @@ import { useNavigate } from "react-router-dom";
 import L from "leaflet";
 import "leaflet.markercluster";
 
-// --- PIN ICONS ---
-const publicPin = L.icon({
-  iconUrl: "/public-pin.png",
-  iconSize: [24, 30],
-  iconAnchor: [12, 30],
-});
-
-const privatePin = L.icon({
-  iconUrl: "/private-pin.png",
-  iconSize: [24, 30],
-  iconAnchor: [12, 30],
-});
 
 // --- MESAFE HESAPLAMA ---
 function getDistance(lat1, lon1, lat2, lon2) {
@@ -133,9 +121,15 @@ export default function HomePage() {
 
       if (!canSee) return;
 
-      const marker = L.marker(
+      const marker = L.circleMarker(
         [note.location.lat, note.location.lng],
-        { icon: note.type === "public" ? publicPin : privatePin }
+        {
+          radius: 10,
+          fillColor: note.type === "public" ? "#fb923c" : "#8b5cf6",
+          color: "#ffffff",
+          weight: 2,
+          fillOpacity: 0.95,
+        }
       );
 
       // POPUP HTML
@@ -186,10 +180,18 @@ export default function HomePage() {
           if (dist > 10) {
             popupNode.innerHTML = `
               <div style="padding:6px;">
-                🔒 Bu özel notu görmek için nota yaklaşmalısın.
+                🔒 Bu özel notu görmek için notun bulunduğu konumda olmalısın.
               </div>`;
             return;
           }
+
+          // VARIŞ
+        popupNode.insertAdjacentHTML(
+          "afterbegin",
+          `<div class="text-xs text-green-400 mb-1 text-center">
+            📍 Konuma ulaştın
+          </div>`
+         );
         }
 
         // --- EDIT BUTTON ---
