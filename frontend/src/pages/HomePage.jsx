@@ -160,41 +160,47 @@ export default function HomePage() {
       marker.on("popupopen", () => {
         const popupNode = document.querySelector(".leaflet-popup-content");
 
-        // --- MESAFE KONTROLÜ ---
-        if (note.type === "private" && !isMe) {
-          const dist = getDistance(
-            position[0],
-            position[1],
-            note.location.lat,
-            note.location.lng
-          );
+        // 1️⃣ MESAFE KONTROLÜ (HER NOT İÇİN)
+        const dist = getDistance(
+          position[0],
+          position[1],
+          note.location.lat,
+          note.location.lng
+        );
 
-          if (!note.allowedUsernames.includes(userData.username)) {
-            popupNode.innerHTML = `
-              <div style="padding:6px;">
-                🔒 Bu not size özel değil.
-              </div>`;
-            return;
-          }
+        if (dist > 10) {
+          popupNode.innerHTML = `
+            <div style="padding:6px; text-align:center;">
+              🔒 Bu notu görmek için notun bulunduğu konuma gelmelisin.
+              <div class="text-xs text-gray-400 mt-1"></div>
+            </div>
+          `;
+          return;
+        }
 
-          if (dist > 10) {
-            popupNode.innerHTML = `
-              <div style="padding:6px;">
-                🔒 Bu özel notu görmek için notun bulunduğu konumda olmalısın.
-              </div>`;
-            return;
-          }
+        // 2️⃣ PRIVATE → YETKİ KONTROLÜ
+        if (
+          note.type === "private" &&
+          !isMe &&
+          !note.allowedUsernames?.includes(userData.username)
+        ) {
+          popupNode.innerHTML = `
+            <div style="padding:6px; text-align:center;">
+              🔒 Bu not sana özel değil.
+            </div>
+          `;
+          return;
+        }
 
-          // VARIŞ
+        // 3️⃣ VARIŞ MESAJI
         popupNode.insertAdjacentHTML(
           "afterbegin",
           `<div class="text-xs text-green-400 mb-1 text-center">
             📍 Konuma ulaştın
           </div>`
-         );
-        }
+        );
 
-        // --- EDIT BUTTON ---
+        // 4️⃣ EDIT
         popupNode.querySelector(".edit-btn")?.addEventListener("click", () => {
           setEditingNote(note);
           setNoteText(note.text);
@@ -203,12 +209,13 @@ export default function HomePage() {
           setShowCard(true);
         });
 
-        // --- DELETE BUTTON ---
+        // 5️⃣ DELETE
         popupNode.querySelector(".del-btn")?.addEventListener("click", async () => {
           await deleteDoc(doc(db, "notes", note.id));
           reloadMarkers();
         });
       });
+
 
       clusterRef.current.addLayer(marker);
     });
