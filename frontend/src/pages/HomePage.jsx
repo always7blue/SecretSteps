@@ -320,10 +320,24 @@ export default function HomePage() {
           selectModeRef.current = true;
           alert("Haritadan konum seç!");
         }}
-        className="absolute bottom-6 right-6 z-[9999] w-16 h-16 rounded-full bg-purple-500 text-white text-4xl flex items-center justify-center shadow-xl"
+        className="
+          fixed
+          right-6
+          bottom-0
+          pb-[env(safe-area-inset-bottom)]
+          mb-6
+          z-[9999]
+          w-16 h-16
+          rounded-full
+          bg-purple-500
+          text-white text-4xl
+          flex items-center justify-center
+          shadow-xl
+        "
       >
         +
       </button>
+
 
       {/* NOTE CARD */}
       {showCard && (
