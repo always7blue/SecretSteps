@@ -181,7 +181,7 @@ export default function HomePage() {
           return;
         }
 
-        if (dist > 10) {
+        if (dist > 50) {
           popupNode.innerHTML = `
             <div style="padding:6px; text-align:center;">
               🔒 Bu notu görmek için notun bulunduğu konuma gelmelisin.
