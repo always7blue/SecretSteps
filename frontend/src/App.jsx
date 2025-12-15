@@ -7,13 +7,16 @@ import LocationPermission from "./pages/LocationPermission";
 import EditProfile from "./pages/EditProfile";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
+import VerifyEmail from "./pages/VerifyEmail";
 
 
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Login />} />
+      <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/verify-email" element={<VerifyEmail />} />
       <Route path="/location-permission" element={<LocationPermission />} />
       <Route path="/home" element={<HomePage />} />
       <Route path="/edit-profile" element={<EditProfile />} />

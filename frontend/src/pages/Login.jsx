@@ -18,12 +18,26 @@ export default function Login() {
 
   const loginUser = async () => {
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCred =
+        await signInWithEmailAndPassword(auth, email, password);
+
+      const user = userCred.user;
+
+      await user.reload();
+
+      if (!user.emailVerified) {
+        alert("Email adresin doğrulanmadan giriş yapamazsın.");
+        return;
+      }
+
       navigate("/location-permission");
+
     } catch (err) {
       console.error(err);
     }
   };
+
+
 
   const googleLogin = async () => {
     try {

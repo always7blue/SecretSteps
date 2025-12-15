@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword,sendEmailVerification } from "firebase/auth";
 import { auth, db } from "../lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
 
@@ -16,44 +16,38 @@ export default function Register() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
+  // register.jsx
   const registerUser = async () => {
     setError("");
 
-    if (!username.trim()) {
-      setError("Kullanıcı adı boş olamaz!");
-      return;
-    }
-
-    if (username.length < 3) {
-      setError("Kullanıcı adı en az 3 karakter olmalı.");
-      return;
-    }
-
-    if (password !== passwordAgain) {
-      setError("Şifreler uyuşmuyor!");
-      return;
-    }
+    if (!username.trim()) return setError("Kullanıcı adı boş olamaz!");
+    if (username.length < 3) return setError("Kullanıcı adı en az 3 karakter olmalı.");
+    if (password !== passwordAgain) return setError("Şifreler uyuşmuyor!");
 
     try {
-      // Firebase Auth → kullanıcı oluştur
-      const userCred = await createUserWithEmailAndPassword(auth, email, password);
+      const userCred =
+        await createUserWithEmailAndPassword(auth, email, password);
+
       const user = userCred.user;
 
-      // Firestore → kullanıcı bilgisi kaydet
+      // 📩 VERIFICATION MAIL
+      await sendEmailVerification(user);
+
       await setDoc(doc(db, "users", user.uid), {
         email,
         username,
         createdAt: new Date(),
       });
 
-      console.log("Kayıt başarılı!");
-      navigate("/location-permission");
+      // 🚫 ASLA location'a gitme
+      navigate("/verify-email");
 
     } catch (err) {
       console.error(err);
-      setError("Kayıt sırasında bir hata oluştu.");
+      setError(err.message);
     }
   };
+
 
   return (
     <div className="min-h-screen flex items-center justify-center">
