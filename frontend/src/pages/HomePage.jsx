@@ -320,16 +320,20 @@ export default function HomePage() {
           selectModeRef.current = true;
           alert("Haritadan konum seç!");
         }}
-        className="absolute bottom-6 right-6 z-[9999] w-16 h-16 rounded-full bg-purple-500 text-white text-4xl flex items-center justify-center shadow-xl"
+        className="fixed right-6 bottom-0 pb-[env(safe-area-inset-bottom)] mb-6 z-[9999]
+           w-16 h-16 rounded-full bg-purple-500 text-white text-4xl
+           flex items-center justify-center shadow-xl"
+
       >
         +
       </button>
 
       {/* NOTE CARD */}
       {showCard && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2
-        w-[90%] max-w-md p-5 rounded-xl bg-[rgba(10,10,25,0.95)]
-        z-[9999] text-white border border-white/10">
+        <div className="fixed bottom-0 left-0 right-0
+             pb-[env(safe-area-inset-bottom)]
+             max-h-[85vh] overflow-y-auto
+             z-[9999]">
 
           <h2 className="text-xl mb-3">
             {editingNote ? "Notu Düzenle" : "Yeni Not"}
@@ -390,9 +394,9 @@ export default function HomePage() {
 
           <div className="flex gap-2">
             <button
-              onClick={editingNote ? updateNote : saveNote}
-              className="flex-1 py-2 bg-purple-500 rounded"
-            >
+                onTouchEnd={editingNote ? updateNote : saveNote}
+                onClick={editingNote ? updateNote : saveNote}
+              >
               {editingNote ? "Güncelle" : "Kaydet"}
             </button>
 
@@ -421,7 +425,13 @@ export default function HomePage() {
       )}
 
       {/* MAP */}
-      <div id="map" className="absolute inset-0"></div>
+      <div
+        id="map"
+        className={`absolute inset-0 ${
+          showCard ? "pointer-events-none" : "pointer-events-auto"
+        }`}
+      />
+
     </div>
   );
 }
