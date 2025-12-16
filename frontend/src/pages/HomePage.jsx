@@ -222,9 +222,19 @@ export default function HomePage() {
     });
   };
 
-  useEffect(() => {
-    if (map && userData) loadNotes();
-  }, [map, userData]);
+    useEffect(() => {
+      if (map && userData) loadNotes();
+    }, [map, userData]);
+
+    useEffect(() => {
+      if (showCard && map) {
+        setTimeout(() => {
+          map.invalidateSize();
+        }, 300);
+      }
+    }, [showCard, map]);
+
+
 
   // --- SAVE NOTE ---
   const saveNote = async () => {
@@ -263,14 +273,21 @@ export default function HomePage() {
   };
 
   // RESET
-  const resetCard = () => {
-    setShowCard(false);
-    setSelectedPos(null);
-    setEditingNote(null);
-    setNoteText("");
-    setAllowedUsernames([]);
-    setNoteType("public");
-  };
+    const resetCard = () => {
+      setShowCard(false);
+      setSelectedPos(null);
+      setEditingNote(null);
+      setNoteText("");
+      setAllowedUsernames([]);
+      setNoteType("public");
+
+      setTimeout(() => {
+        if (map) {
+          map.invalidateSize();
+        }
+      }, 350);
+    };
+
 
   // ADD USER
   const addAllowedUser = () => {
@@ -290,12 +307,11 @@ export default function HomePage() {
     <div className="relative w-full h-screen">
 
     {/* MAP – HER ZAMAN DOM'DA */}
-    <div
-      id="map"
-      className={`absolute inset-0 ${
-        showCard ? "pointer-events-none" : "pointer-events-auto"
-      }`}
-    />
+      <div
+        id="map"
+        className="absolute inset-0"
+      />
+
 
     {/* LOADING OVERLAY */}
     {!userData && (
@@ -357,6 +373,14 @@ export default function HomePage() {
       >
         +
       </button>
+      {/* BACKDROP OVERLAY */}
+        {showCard && (
+          <div
+            className="fixed inset-0 z-[9998] bg-black/20"
+            onClick={resetCard}
+          />
+        )}
+
 
 
       {/* NOTE CARD */}
