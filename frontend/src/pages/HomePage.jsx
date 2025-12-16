@@ -47,7 +47,8 @@ export default function HomePage() {
   const [usernameInput, setUsernameInput] = useState("");
   const [allowedUsernames, setAllowedUsernames] = useState([]);
   const [editingNote, setEditingNote] = useState(null);
-  
+  const [isAnonymous, setIsAnonymous] = useState(false);
+
 
   const clusterRef = useRef(null);
   const navigate = useNavigate();
@@ -141,7 +142,8 @@ export default function HomePage() {
       let popupHTML = `
         <div>
           <b>${note.text}</b><br/>
-          <small>${note.authorUsername}</small><br/>
+          <small>${note.isAnonymous ? "🕵️‍♀️ Anonim" : note.authorUsername}</small>
+          <br/>
       `;
 
       // ÜZERI CLICKTE MESAFE KONTROLÜ YAPACAĞIZ
@@ -245,7 +247,9 @@ export default function HomePage() {
       type: noteType,
       allowedUsernames: noteType === "private" ? allowedUsernames : [],
       authorUid: auth.currentUser.uid,
-      authorUsername: userData.username,
+      authorUsername: isAnonymous ? "Anonim" : userData.username,
+      isAnonymous: isAnonymous,
+
       location: {
         lat: selectedPos[0],
         lng: selectedPos[1],
@@ -280,6 +284,8 @@ export default function HomePage() {
       setNoteText("");
       setAllowedUsernames([]);
       setNoteType("public");
+      setIsAnonymous(false);
+
 
       setTimeout(() => {
         if (map) {
@@ -425,6 +431,17 @@ export default function HomePage() {
               </label>
             </div>
           )}
+
+          {/* ANONİM SEÇENEĞİ */}
+          <div className="flex items-center gap-2 mb-3">
+            <input
+              type="checkbox"
+              checked={isAnonymous}
+              onChange={(e) => setIsAnonymous(e.target.checked)}
+            />
+            <span className="text-sm">Anonim olarak paylaş</span>
+          </div>
+
 
           {/* PRIVATE USER INPUT */}
           {noteType === "private" && !editingNote && (
