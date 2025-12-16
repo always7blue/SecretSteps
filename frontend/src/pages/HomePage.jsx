@@ -385,9 +385,14 @@ export default function HomePage() {
 
       {/* NOTE CARD */}
       {showCard && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2
-        w-[90%] max-w-md p-5 rounded-xl bg-[rgba(10,10,25,0.95)]
-        z-[9999] text-white border border-white/10">
+        <div className="fixed left-1/2 -translate-x-1/2
+          bottom-[calc(1rem+env(safe-area-inset-bottom))]
+          w-[90%] max-w-md
+          p-5
+          rounded-xl
+          bg-[rgba(10,10,25,0.95)]
+          z-[9999]
+          text-white">
 
           <h2 className="text-xl mb-3">
             {editingNote ? "Notu Düzenle" : "Yeni Not"}
