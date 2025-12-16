@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { auth, db } from "../lib/firebase";
-import { signOut } from "firebase/auth";
+import { signOut, onAuthStateChanged } from "firebase/auth";
 import {
   doc,
   getDoc,
@@ -51,18 +51,23 @@ export default function HomePage() {
 
   const clusterRef = useRef(null);
   const navigate = useNavigate();
-  const user = auth.currentUser;
 
   // --- USER DATA ---
   useEffect(() => {
-    async function fetchUser() {
-      if (!user) return;
-      const ref = doc(db, "users", user.uid);
+    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (!firebaseUser) return;
+
+      const ref = doc(db, "users", firebaseUser.uid);
       const snap = await getDoc(ref);
-      if (snap.exists()) setUserData(snap.data());
-    }
-    fetchUser();
+
+      if (snap.exists()) {
+        setUserData(snap.data());
+      }
+    });
+
+    return () => unsub();
   }, []);
+
 
   // --- LOCATION ---
   useEffect(() => {
@@ -113,7 +118,7 @@ export default function HomePage() {
       const note = { id: d.id, ...d.data() };
       if (!note.location) return;
 
-      const isMe = note.authorUid === user.uid;
+      const isMe = note.authorUid === auth.currentUser?.uid;
       const canSee =
         note.type === "public" ||
         isMe ||
@@ -147,15 +152,14 @@ export default function HomePage() {
       marker.bindPopup(popupHTML);
 
       marker.on("click", () => {
-      const isMe = note.authorUid === user.uid;
-      if (!isMe) return;
+        if (!isMe) return;
 
-      setEditingNote(note);
-      setNoteText(note.text);
-      setNoteType(note.type);
-      setAllowedUsernames(note.allowedUsernames || []);
-      setShowCard(true);
-    });
+        setEditingNote(note);
+        setNoteText(note.text);
+        setNoteType(note.type);
+        setAllowedUsernames(note.allowedUsernames || []);
+        setShowCard(true);
+      });
 
 
       // POPUP AÇILINCA TETIK
@@ -230,7 +234,7 @@ export default function HomePage() {
       text: noteText,
       type: noteType,
       allowedUsernames: noteType === "private" ? allowedUsernames : [],
-      authorUid: user.uid,
+      authorUid: auth.currentUser.uid,
       authorUsername: userData.username,
       location: {
         lat: selectedPos[0],
@@ -285,6 +289,22 @@ export default function HomePage() {
   return (
     <div className="relative w-full h-screen">
 
+    {/* MAP – HER ZAMAN DOM'DA */}
+    <div
+      id="map"
+      className={`absolute inset-0 ${
+        showCard ? "pointer-events-none" : "pointer-events-auto"
+      }`}
+    />
+
+    {/* LOADING OVERLAY */}
+    {!userData && (
+      <div className="absolute inset-0 z-[9999]
+                      flex items-center justify-center
+                      bg-black/60 text-white">
+        Yükleniyor...
+      </div>
+    )}
       {/* PROFILE BUTTON */}
       <button
         onClick={() => setProfileOpen(!profileOpen)}
@@ -300,7 +320,7 @@ export default function HomePage() {
           <div className="flex flex-col items-center">
             <div className="w-20 h-20 rounded-full bg-white/20 flex items-center justify-center">👤</div>
             <h2 className="text-xl mt-3">{userData?.username}</h2>
-            <p className="text-sm text-gray-300">{user?.email}</p>
+            <p className="text-sm text-gray-300">{auth.currentUser?.email}</p>
           </div>
 
           <div className="mt-6 flex flex-col gap-3">
@@ -433,9 +453,6 @@ export default function HomePage() {
 
         </div>
       )}
-
-      {/* MAP */}
-      <div id="map" className="absolute inset-0"></div>
     </div>
   );
 }  
