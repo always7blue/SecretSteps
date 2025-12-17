@@ -48,10 +48,25 @@ export default function HomePage() {
   const [allowedUsernames, setAllowedUsernames] = useState([]);
   const [editingNote, setEditingNote] = useState(null);
   const [isAnonymous, setIsAnonymous] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+
 
 
   const clusterRef = useRef(null);
   const navigate = useNavigate();
+
+    function formatDateTime(date) {
+    if (!date) return "";
+
+    return date.toLocaleString("tr-TR", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+
 
   // --- USER DATA ---
   useEffect(() => {
@@ -98,7 +113,9 @@ export default function HomePage() {
 
       setSelectedPos([e.latlng.lat, e.latlng.lng]);
       setShowCard(true);
+      
       selectModeRef.current = false;
+      setSelectMode(false);
     });
 
     setMap(m);
@@ -137,6 +154,9 @@ export default function HomePage() {
           fillOpacity: 0.95,
         }
       );
+      const createdAtDate = note.createdAt?.toDate
+      ? note.createdAt.toDate()
+      : new Date(note.createdAt);
 
       // POPUP HTML
       let popupHTML = `
@@ -144,12 +164,13 @@ export default function HomePage() {
           <b>${note.text}</b><br/>
           <small>${note.isAnonymous ? "🕵️‍♀️ Anonim" : note.authorUsername}</small>
           <br/>
+          <small style="color:#aaa; font-size:11px;">
+            ${formatDateTime(createdAtDate)}
+          </small>
       `;
 
       // ÜZERI CLICKTE MESAFE KONTROLÜ YAPACAĞIZ
       popupHTML += `<div class="note-id" data-note="${note.id}"></div>`;
-
-
       popupHTML += `</div>`;
       marker.bindPopup(popupHTML);
 
@@ -216,25 +237,25 @@ export default function HomePage() {
           "afterbegin",
           `<div class="text-xs text-green-400 mb-1 text-center">
             📍 Konuma ulaştın
-          </div>`
+            </div>`
         );
-      });
+        });
 
-      clusterRef.current.addLayer(marker);
-    });
-  };
+          clusterRef.current.addLayer(marker);
+        });
+    };
 
-    useEffect(() => {
-      if (map && userData) loadNotes();
-    }, [map, userData]);
+      useEffect(() => {
+        if (map && userData) loadNotes();
+      }, [map, userData]);
 
-    useEffect(() => {
-      if (showCard && map) {
-        setTimeout(() => {
-          map.invalidateSize();
-        }, 300);
-      }
-    }, [showCard, map]);
+      useEffect(() => {
+        if (showCard && map) {
+          setTimeout(() => {
+            map.invalidateSize();
+          }, 300);
+        }
+      }, [showCard, map]);
 
 
 
@@ -312,6 +333,28 @@ export default function HomePage() {
   return (
     <div className="relative w-full h-screen">
 
+    {/* KONUM SEÇME MODU BİLGİSİ */}
+    {selectMode && (
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
+                      z-[9999]
+                      bg-black/70 text-white
+                      px-4 py-3 rounded-xl
+                      flex items-center gap-3">
+        <span>Haritadan konum seç</span>
+
+        <button
+          onClick={() => {
+            selectModeRef.current = false;
+            setSelectMode(false);
+          }}
+          className="px-3 py-1 bg-red-500 rounded-lg text-sm"
+        >
+          İptal
+        </button>
+      </div>
+    )}
+
+
     {/* MAP – HER ZAMAN DOM'DA */}
       <div
         id="map"
@@ -360,7 +403,7 @@ export default function HomePage() {
       <button
         onClick={() => {
           selectModeRef.current = true;
-          alert("Haritadan konum seç!");
+          setSelectMode(true);
         }}
         className="
           fixed
