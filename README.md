@@ -1,7 +1,7 @@
 # SecretSteps 👣
 
-SecretSteps, insanların **yalnızca oradayken** açılan kısa notlar bıraktığı,
-konum tabanlı bir keşif uygulamasıdır.
+**SecretSteps**, insanların **yalnızca fiziksel olarak oradayken** açılabilen
+kısa notlar bıraktığı, konum tabanlı bir keşif uygulamasıdır.
 
 ---
 ## ✨ Nedir?
@@ -18,6 +18,13 @@ SecretSteps’te kullanıcılar:
 - 📍 Konum tabanlı gizli notlar
 - 🔒 Yakınlıkla açılan içerik
 - 🧭 Sade harita arayüzü
+- 📱 Mobil tarayıcı uyumlu UX
+
+---
+
+## 🚀 Canlı Demo
+
+🔗 https://secretsteps.web.app
 
 ---
 
@@ -28,18 +35,6 @@ SecretSteps’te kullanıcılar:
 - Firebase Firestore
 - React Router
 - Map API
-
----
-
-## 🚧 Proje Durumu
-
-SecretSteps aktif geliştirme aşamasındadır.
-
-- v0.1
-- MVP yayında
-- Geri bildirimlere açıktır
-
-Bu bir indie projedir.
 
 ---
 
