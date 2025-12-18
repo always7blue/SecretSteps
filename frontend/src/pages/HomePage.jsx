@@ -52,6 +52,9 @@ export default function HomePage() {
   const clusterRef = useRef(null);
   const [showMyNotes, setShowMyNotes] = useState(false);
   const [myNotes, setMyNotes] = useState([]);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchText, setSearchText] = useState("");
+
 
   const navigate = useNavigate();
 
@@ -120,6 +123,36 @@ export default function HomePage() {
 
       setMap(m);
     }, [position]);
+
+    // Lokasyon arama
+    const searchLocation = async () => {
+      if (!searchText.trim() || !map) return;
+
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+            searchText
+          )}`
+        );
+
+        const data = await res.json();
+
+        if (!data || data.length === 0) {
+          alert("Yer bulunamadı");
+          return;
+        }
+
+        const { lat, lon } = data[0];
+
+        map.setView([lat, lon], 16);
+        setShowSearch(false);
+        setSearchText("");
+      } catch (e) {
+        console.error(e);
+        alert("Arama sırasında hata oluştu");
+      }
+    };
+
 
     // --- MARKER RELOAD ---
     const reloadMarkers = async () => {
@@ -283,7 +316,7 @@ export default function HomePage() {
       reloadMarkers();
     };
 
-      const loadMyNotes = async () => {
+    const loadMyNotes = async () => {
       if (!auth.currentUser) return;
 
       const snap = await getDocs(collection(db, "notes"));
@@ -403,6 +436,18 @@ export default function HomePage() {
           👤
         </button>
 
+        {/* SEARCH BUTTON */}
+        <button
+          onClick={() => setShowSearch(true)}
+          className="absolute top-4 left-[4.5rem] z-[999]
+                    bg-purple-400 w-12 h-12 rounded-full
+                    flex items-center justify-center
+                    text-white text-xl backdrop-blur-xl"
+        >
+          🔍
+        </button>
+
+
         {/* PROFILE PANEL */}
         {profileOpen && (
           <div className="absolute top-20 right-4 z-[9999] w-72 p-6 rounded-2xl bg-[rgba(15,15,35,0.9)] text-white">
@@ -465,8 +510,6 @@ export default function HomePage() {
               onClick={resetCard}
             />
           )}
-
-
 
         {/* NOTE CARD */}
         {showCard && (
@@ -578,6 +621,50 @@ export default function HomePage() {
 
           </div>
         )}
+      {/* ARAMA PANELI*/}
+      {showSearch && (
+      <div className="fixed inset-0 z-[9999] bg-black/30">
+        <div
+          className="
+            fixed
+            top-20 left-4
+            w-[85%] max-w-sm
+            bg-[rgba(10,10,25,0.97)]
+            rounded-xl
+            p-4
+          "
+          onClick={(e) => e.stopPropagation()}
+        >
+          <input
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            placeholder="Bir yer ara..."
+            className="w-full p-2 rounded bg-white/10 text-white mb-3"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") searchLocation();
+            }}
+          />
+
+          <div className="flex gap-2">
+            <button
+              onClick={searchLocation}
+              className="flex-1 py-2 bg-purple-500 rounded"
+            >
+              Git
+            </button>
+
+            <button
+              onClick={() => setShowSearch(false)}
+              className="px-4 py-2 bg-white/20 rounded"
+            >
+              İptal
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+      
       {/* BENİM NOTLARIM PANELİ */}
       {showMyNotes && (
         <div className="fixed inset-0 z-[9999] bg-black/40">
